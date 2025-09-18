@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMP Glossary Study Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Styles for the flashcard flip animation */
+        .flashcard {
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .flashcard-back {
+            transform: rotateY(180deg);
+        }
+        /* Styles for the matching game */
+        .match-item.selected {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .match-item.correct {
+            background-color: #22c55e; /* green-500 */
+            color: white;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .match-item.incorrect {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        /* Styles for quiz answer buttons */
+        .quiz-option.correct {
+            background-color: #22c55e !important;
+            color: white !important;
+            border-color: #16a34a !important;
+        }
+        .quiz-option.incorrect {
+            background-color: #ef4444 !important;
+            color: white !important;
+            border-color: #dc2626 !important;
+        }
+        .quiz-option.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6 md:p-8 flex flex-col h-[95vh]">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">PMP Glossary Study Tool</h1>
+            <p class="text-gray-600 mt-2">Choose a game mode to start studying.</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex justify-center space-x-2 md:space-x-4 mb-8 border-b pb-4">
+            <button id="flashcards-btn" class="game-nav-btn bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-all">Flashcards</button>
+            <button id="matching-btn" class="game-nav-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-all">Matching Game</button>
+            <button id="quiz-btn" class="game-nav-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-all">Quiz</button>
+        </nav>
+
+        <main id="game-container" class="flex-grow min-h-0">
+            <!-- Flashcards Game -->
+            <div id="flashcards-game" class="game-mode">
+                <p id="flashcard-counter" class="text-center text-gray-500 mb-2">Card 1 / X</p>
+                <div id="flashcard-container" class="relative w-full h-80 perspective-1000 cursor-pointer">
+                    <div id="flashcard" class="flashcard relative w-full h-full">
+                        <!-- Front of card (Term) -->
+                        <div id="flashcard-front" class="flashcard-face absolute w-full h-full bg-blue-100 border-2 border-blue-300 rounded-xl flex items-center justify-center p-6 text-center">
+                            <h2 class="text-2xl md:text-3xl font-semibold text-blue-900">Term</h2>
+                        </div>
+                        <!-- Back of card (Definition) -->
+                        <div id="flashcard-back" class="flashcard-back flashcard-face absolute w-full h-full bg-blue-50 border-2 border-blue-200 rounded-xl flex items-center justify-center p-6 text-sm md:text-base overflow-y-auto">
+                            <p>Definition</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mt-6">
+                    <button id="prev-card" class="px-5 py-2 bg-gray-600 text-white rounded-lg shadow hover:bg-gray-700 transition">&larr; Previous</button>
+                    <p class="text-gray-500 text-sm">Click card to flip</p>
+                    <button id="next-card" class="px-5 py-2 bg-gray-600 text-white rounded-lg shadow hover:bg-gray-700 transition">Next &rarr;</button>
+                </div>
+            </div>
+
+            <!-- Matching Game -->
+            <div id="matching-game" class="game-mode hidden h-full flex flex-col">
+                <div id="matching-board" class="grid grid-cols-1 md:grid-cols-5 gap-4 flex-grow min-h-0">
+                    <div id="terms-column" class="md:col-span-2 flex flex-col space-y-2 overflow-hidden"></div>
+                    <div id="defs-column" class="md:col-span-3 flex flex-col space-y-2 overflow-hidden"></div>
+                </div>
+                 <div id="matching-feedback" class="text-center mt-4 h-6 font-semibold"></div>
+                <div class="flex justify-center mt-4">
+                    <button id="new-match-game" class="px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition">New Game</button>
+                </div>
+            </div>
+
+            <!-- Quiz Game -->
+            <div id="quiz-game" class="game-mode hidden">
+                <div class="bg-gray-50 p-6 rounded-lg border">
+                    <p class="text-gray-600 mb-2 font-medium">Definition:</p>
+                    <p id="quiz-definition" class="text-base mb-6 h-32 overflow-y-auto">Select the correct term for this definition.</p>
+                </div>
+                <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <!-- Options will be injected here -->
+                </div>
+                 <div class="flex justify-between items-center mt-6">
+                    <p id="quiz-score" class="font-bold text-lg">Score: 0 / 0</p>
+                    <button id="next-question" class="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">Next Question</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const glossaryData = [
+            { "term": "5 Whys Method", "definition": "An effective tool for root cause analysis in which the question \"Why?\" is asked of a problem in succession until the root cause is found. Developed by Sakichi Toyoda, a Japanese inventor and industrialist, the 5 Whys method is an integral part of the Lean philosophy." },
+            { "term": "80/20 Rule", "definition": "A general guideline with many applications; in terms of controlling processes, it contends that a relatively large number of problems or defects, typically 80%, are commonly due to a relatively small number of causes, typically 20%. See also \"Pareto Chart\"." },
+            { "term": "A/B Testing", "definition": "A marketing approach used to determine user preferences by showing different sets of users' similar services-an 'Alpha' and a 'Beta' version-with one independent variable." },
+            { "term": "Accept", "definition": "A strategy for managing negative risks or opportunities that involves acknowledging risk and not taking any action until the risk occurs." },
+            { "term": "Acceptance Criteria", "definition": "A set of conditions that is required to be met before deliverables are accepted." },
+            { "term": "Accepted Deliverables", "definition": "Deliverables that meet the acceptance criteria and have been formally signed off and approved by the customer or sponsor as part of the scope validation process." },
+            { "term": "Active Listening", "definition": "A communication technique that involves acknowledging the speaker's message and the recipient clarifying the message to confirm that what was heard matches the message that the sender intended." },
+            { "term": "Activity", "definition": "A distinct portion of work, scheduled with a beginning and an end, that must be performed to complete work on the project. Also known as a schedule activity. See also \"Task\"." },
+            { "term": "Activity Attributes", "definition": "Multiple attributes associated with each activity that can be included within the activity list." },
+            { "term": "Activity Cost Estimates", "definition": "Each task is assigned a budget, and the aggregate of these estimates results in the project budget. Activity cost estimates include labor, materials, equipment, and fixed cost items like contractors, services, facilities, financing costs, etc. This information can be presented in a detailed or summarized form." },
+            { "term": "Agile", "definition": "A term used to describe a mindset of values and principles as set forth in the Agile Manifesto." },
+            { "term": "Agile Coach", "definition": "A process role on a project team that helps organizations achieve true agility by coaching teams across the enterprise on how to apply agile practices and choose their best way of working. See also \"scrum master.\"" },
+            { "term": "Analogous Estimating", "definition": "A technique for estimating the duration or cost of an activity on a project using historical data from a similar activity or project. Also known as \"Top-Down Estimating\"." },
+            { "term": "Approved Change Requests", "definition": "Change requests that have been reviewed and approved by the change control board (CCB) and are ready to be scheduled for implementation." },
+            { "term": "Artifact", "definition": "Any project management processes, inputs, tools, techniques, outputs, EEFs, and OPAs that the project management team uses on their specific project. They are subject to configuration management and are maintained and archived by the team." },
+            { "term": "Assumption", "definition": "Anything considered to be true while planning. Assumptions should be documented and validated and are often closely linked to constraints." },
+            { "term": "Assumption Log", "definition": "A list of all uncertainties that are treated as true for the purpose of planning." },
+            { "term": "Audit", "definition": "An examination of a project's goals and achievements, including adequacy, accuracy, efficiency, effectiveness, and the project's compliance with applicable methodologies and regulations. It tends to be a formal, one-sided process that can be extremely demoralizing to team members." },
+            { "term": "Backlog", "definition": "The prioritized list of all the work, presented in story form, for a project team. See also \"Iteration Backlog\"." },
+            { "term": "Baseline", "definition": "Original objectives plus approved change requests for scope, schedule, cost, and resources required to finish the project. Baselines represent the approved plan, and they are useful for measuring how actual results deviate from the plan." },
+            { "term": "Benchmarking", "definition": "The comparison of actual or planned products, processes, and practices to those of comparable organizations to identify best practices, generate ideas for improvement, and provide a basis for measuring performance." },
+            { "term": "Bottom-Up Estimating", "definition": "A method of estimating project duration or cost by aggregating the estimates of the lower-level components of the WBS." },
+            { "term": "Brainstorming", "definition": "A simple technique used to generate a list of ideas. It should be led by a facilitator with a group consisting of stakeholders, team members, and subject matter experts. After quickly generating a list of alternatives, the group then performs analysis of the alternatives and generally chooses a particular option for action." },
+            { "term": "Budget", "definition": "A time-phased plan for when funds will be disbursed on a project. It helps the organization anticipate when money will be coming in and/or going out, for the duration of the project. Budget accuracy is dependent upon a well-defined project scope and schedule. The total project budget is the cost baseline plus management reserves. See also \"Cost Baseline\"." },
+            { "term": "Burn Chart", "definition": "A tool that is used to track the progress of the project by plotting the number of days of sprint against the number of hours of work remaining. It is used to communicate progress during and at the end of an iteration/sprint/ increment, showing the number of stores that have been completed and the ones that remain." },
+            { "term": "Business Case", "definition": "A documented economic feasibility study used to establish the validity of the benefits of a selected component lacking sufficient definition and that is used as a basis for the authorization of further project management activities." },
+            { "term": "Change Control", "definition": "Purposeful management of changes to the project (scope, schedule, cost, or quality). In change control, a change request goes through a formal process before a decision (approve/deny) is made." },
+            { "term": "Change Control Board (CCB)", "definition": "A formally chartered group responsible for reviewing, evaluating, approving, delaying, or rejecting changes to the project and for recording and communicating such decisions." },
+            { "term": "Change Log", "definition": "A living list of all project change requests (CR). This log is used to track and provide accurate status of each CR (requester, owner, details, impact analysis, decision, etc.)" },
+            { "term": "Change Request (CR)", "definition": "Request for change sent to upper management or the Change Control Board (CCB) for its evaluation and approval. See also \"Change Control Form\"." },
+            { "term": "Charter", "definition": "A shortened name for the project charter. A formal document that starts the project. Typically used by the project sponsor and the project manager, this document provides the reason for the project (based on business case) and may include high-level requirements, assumptions, constraints, milestone(s), and preliminary budget." },
+            { "term": "Close Project or Phase Process", "definition": "The process of finalizing all activities for the project, phase, or contract." },
+            { "term": "Colocation", "definition": "An organizational placement strategy in which the project team members are physically located close to one another to improve communication, working relationships, and productivity." },
+            { "term": "Communication Channels", "definition": "The number of possible communication paths on a project. The formula for calculating communication channels is: [n(n-1)]/2; n = number of people on the project." },
+            { "term": "Constraint", "definition": "An external factor that limits the ability to plan. Constraints and assumptions are closely linked." },
+            { "term": "Contingency Plan", "definition": "A risk response strategy developed in advance before risks occur; it is meant to be used if and when identified risks become reality." },
+            { "term": "Contingency Reserve", "definition": "Time or money allocated in the schedule or cost baseline for known risks with active response strategies." },
+            { "term": "Contract", "definition": "A mutually binding agreement that obligates the seller to provide the specified project or service or result and obligates the buyer to pay for it." },
+            { "term": "Control Charts", "definition": "A graphic display of process data over time and against established control limits, which has a centerline that assists in detecting a trend of plotted values toward either control limit. These charts are often associated with control limits, specification limits, means, and standard deviation." },
+            { "term": "Corrective Action", "definition": "Steps (action) to bring future results in line with the plan; this can change the plan or the way the plan is being executed." },
+            { "term": "Cost Baseline", "definition": "The approved version of the time-phased project budget, excluding any management reserves, which can be changed only through formal change control procedures and is used as a basis for comparison to actual results." },
+            { "term": "Cost of Quality (CoQ)", "definition": "All costs incurred over the life of the product by investment in preventing nonconformance to requirements, appraisal of the product or service for conformance to requirements, and failure to meet requirements." },
+            { "term": "Crashing", "definition": "Applying additional resources to one or more tasks/activities to complete the work more quickly. Crashing usually increases costs more than risks. In comparison, fast-tracking increases risks. See also \"Fast Tracking\"." },
+            { "term": "Critical Path", "definition": "The sequence of activities that represents the longest path through a project, which determines the shortest possible duration." },
+            { "term": "Critical Path Method (CPM)", "definition": "A technique of schedule analysis in which the schedule activities are evaluated to determine the float or slack for each activity and the overall schedule. To calculate critical path, use the forward and backward pass along with float analysis to identify all network paths, including critical." },
+            { "term": "Decomposition", "definition": "A technique used for dividing and subdividing the project scope and project deliverables into smaller, more manageable parts." },
+            { "term": "Definition of Done (DoD)", "definition": "A team's checklist of all the criteria required to be met so that a deliverable can be considered ready for customer use." },
+            { "term": "Deliverable", "definition": "Any unique and verifiable product, result, or capability used to perform a service and that is required to be produced to complete a process, phase, or projects." },
+            { "term": "Delphi Technique", "definition": "A form of gathering expert opinions in which members of a group are asked or polled anonymously." },
+            { "term": "Dependency", "definition": "A relationship between one or more tasks/activities. A dependency may be mandatory or discretionary, internal or external." },
+            { "term": "Duration", "definition": "Amount of time needed to complete an activity/task or work package." },
+            { "term": "Earned Value (EV)", "definition": "A measure of work performed expressed in terms of the budget authorized for that work." },
+            { "term": "Earned Value Management (EVM)", "definition": "A methodology that combines scope, schedule, and resource measurements to assess project performance and progress." },
+            { "term": "Effort", "definition": "The number of labor units required to complete a scheduled activity or WBS component, often expressed in hours, days, or weeks." },
+            { "term": "Emotional Intelligence (El)", "definition": "The ability to identify, assess, and manage the personal emotions of oneself and other people, as well as the collective emotions of groups of people. EQ (emotional quotient) is also a commonly used abbreviation." },
+        ];
+
+        // --- UTILITY FUNCTIONS ---
+        const shuffleArray = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        };
+
+        // --- DOM ELEMENTS ---
+        const gameModes = document.querySelectorAll('.game-mode');
+        const navButtons = document.querySelectorAll('.game-nav-btn');
+
+        // --- GAME SWITCHING LOGIC ---
+        const switchGameMode = (mode) => {
+            gameModes.forEach(game => game.classList.add('hidden'));
+            document.getElementById(`${mode}-game`).classList.remove('hidden');
+
+            navButtons.forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            document.getElementById(`${mode}-btn`).classList.add('bg-blue-500', 'text-white');
+            document.getElementById(`${mode}-btn`).classList.remove('bg-gray-200', 'text-gray-700');
+            
+            // Initialize the selected game
+            if (mode === 'flashcards') initFlashcards();
+            if (mode === 'matching') initMatchingGame();
+            if (mode === 'quiz') initQuiz();
+        };
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const mode = button.id.replace('-btn', '');
+                switchGameMode(mode);
+            });
+        });
+
+        // --- FLASHCARDS GAME ---
+        const flashcard = document.getElementById('flashcard');
+        const flashcardFront = document.getElementById('flashcard-front').querySelector('h2');
+        const flashcardBack = document.getElementById('flashcard-back').querySelector('p');
+        const prevCardBtn = document.getElementById('prev-card');
+        const nextCardBtn = document.getElementById('next-card');
+        const flashcardCounter = document.getElementById('flashcard-counter');
+        
+        let currentCardIndex = 0;
+        let shuffledFlashcards = [];
+
+        function initFlashcards() {
+            currentCardIndex = 0;
+            shuffledFlashcards = shuffleArray([...glossaryData]);
+            showFlashcard(currentCardIndex);
+        }
+
+        function showFlashcard(index) {
+            if (flashcard.classList.contains('is-flipped')) {
+                flashcard.classList.remove('is-flipped');
+            }
+            const card = shuffledFlashcards[index];
+            setTimeout(() => { // Wait for flip back animation
+                flashcardFront.textContent = card.term;
+                flashcardBack.textContent = card.definition;
+                flashcardCounter.textContent = `Card ${index + 1} / ${shuffledFlashcards.length}`;
+            }, 300);
+        }
+
+        flashcard.parentElement.addEventListener('click', () => {
+            flashcard.classList.toggle('is-flipped');
+        });
+
+        prevCardBtn.addEventListener('click', () => {
+            currentCardIndex = (currentCardIndex - 1 + shuffledFlashcards.length) % shuffledFlashcards.length;
+            showFlashcard(currentCardIndex);
+        });
+
+        nextCardBtn.addEventListener('click', () => {
+            currentCardIndex = (currentCardIndex + 1) % shuffledFlashcards.length;
+            showFlashcard(currentCardIndex);
+        });
+
+        // --- MATCHING GAME ---
+        const termsColumn = document.getElementById('terms-column');
+        const defsColumn = document.getElementById('defs-column');
+        const newMatchGameBtn = document.getElementById('new-match-game');
+        const matchingFeedback = document.getElementById('matching-feedback');
+
+        let matchGameData = [];
+        let selectedTermEl = null;
+        let matchedPairs = 0;
+        const ITEMS_PER_MATCH_GAME = 6;
+
+        function initMatchingGame() {
+            matchedPairs = 0;
+            matchingFeedback.textContent = 'Select a term, then its definition.';
+            
+            // Get a subset of data and shuffle it
+            const shuffledData = shuffleArray([...glossaryData]);
+            matchGameData = shuffledData.slice(0, ITEMS_PER_MATCH_GAME);
+
+            const terms = matchGameData.map(item => item);
+            const defs = shuffleArray([...matchGameData]); // Shuffle definitions separately
+
+            termsColumn.innerHTML = '';
+            defsColumn.innerHTML = '';
+            
+            const itemBaseClasses = 'match-item border rounded-lg p-2 text-center cursor-pointer transition-all flex flex-grow items-center justify-center overflow-hidden';
+
+            terms.forEach((item, index) => {
+                const termEl = document.createElement('div');
+                termEl.className = `${itemBaseClasses} bg-white hover:bg-gray-100`;
+                termEl.textContent = item.term;
+                termEl.dataset.term = item.term;
+                termEl.addEventListener('click', () => handleTermClick(termEl));
+                termsColumn.appendChild(termEl);
+            });
+
+            defs.forEach((item, index) => {
+                const defEl = document.createElement('div');
+                defEl.className = `${itemBaseClasses} bg-white hover:bg-gray-100`;
+                defEl.textContent = item.definition;
+                defEl.dataset.term = item.term;
+                defEl.addEventListener('click', () => handleDefClick(defEl));
+                defsColumn.appendChild(defEl);
+            });
+            
+            // Adjust font size to fit without scrolling
+            adjustFontSize();
+        }
+        
+        function adjustFontSize() {
+            const items = Array.from(document.querySelectorAll('#matching-game .match-item'));
+            if (items.length === 0) return;
+
+            // Use a timeout to ensure layout is calculated after DOM changes from initMatchingGame
+            setTimeout(() => {
+                 // Reset styles that might affect calculations
+                items.forEach(item => {
+                    item.style.fontSize = '16px'; // Reset to base size for measurement
+                    item.style.lineHeight = '1.4';
+                });
+
+                let minFontSize = 16;
+
+                items.forEach(item => {
+                    let currentFontSize = 16;
+                    
+                    // Reduce font size until content fits vertically
+                    // Add a small buffer (1px) to prevent minor floating point issues
+                    while (item.scrollHeight > item.clientHeight + 1 && currentFontSize > 8) {
+                        currentFontSize -= 0.5;
+                        item.style.fontSize = `${currentFontSize}px`;
+                    }
+                    
+                    if (currentFontSize < minFontSize) {
+                        minFontSize = currentFontSize;
+                    }
+                });
+
+                // Apply the smallest font size to all items for uniform look
+                items.forEach(item => {
+                    item.style.fontSize = `${minFontSize}px`;
+                    if (minFontSize < 12) {
+                        item.style.lineHeight = '1.2';
+                    }
+                });
+            }, 0); // setTimeout with 0 delay defers execution
+        }
+        
+        window.addEventListener('resize', adjustFontSize);
+
+
+        function handleTermClick(termEl) {
+            if (termEl.classList.contains('correct')) return;
+            
+            if (selectedTermEl) {
+                selectedTermEl.classList.remove('selected');
+            }
+            selectedTermEl = termEl;
+            selectedTermEl.classList.add('selected');
+        }
+
+        function handleDefClick(defEl) {
+            if (!selectedTermEl || defEl.classList.contains('correct')) return;
+
+            if (selectedTermEl.dataset.term === defEl.dataset.term) {
+                // Correct match
+                selectedTermEl.classList.remove('selected');
+                selectedTermEl.classList.add('correct');
+                defEl.classList.add('correct');
+                selectedTermEl = null;
+                matchedPairs++;
+                if (matchedPairs === ITEMS_PER_MATCH_GAME) {
+                    matchingFeedback.textContent = 'Congratulations! You matched them all!';
+                    matchingFeedback.classList.add('text-green-600');
+                } else {
+                     matchingFeedback.textContent = 'Correct Match!';
+                     matchingFeedback.classList.remove('text-red-600');
+                     matchingFeedback.classList.add('text-green-600');
+                }
+            } else {
+                // Incorrect match
+                defEl.classList.add('incorrect');
+                matchingFeedback.textContent = 'Try again!';
+                matchingFeedback.classList.add('text-red-600');
+                setTimeout(() => {
+                    defEl.classList.remove('incorrect');
+                     matchingFeedback.textContent = 'Select a term, then its definition.';
+                     matchingFeedback.classList.remove('text-red-600');
+                }, 500);
+            }
+        }
+        
+        newMatchGameBtn.addEventListener('click', initMatchingGame);
+
+        // --- QUIZ GAME ---
+        const quizDefinition = document.getElementById('quiz-definition');
+        const quizOptionsContainer = document.getElementById('quiz-options');
+        const quizScoreEl = document.getElementById('quiz-score');
+        const nextQuestionBtn = document.getElementById('next-question');
+        
+        let quizCorrectAnswer = null;
+        let quizScore = 0;
+        let quizTotal = 0;
+
+        function initQuiz() {
+            quizScore = 0;
+            quizTotal = 0;
+            updateQuizScore();
+            generateQuizQuestion();
+        }
+        
+        function generateQuizQuestion() {
+            quizOptionsContainer.innerHTML = '';
+            
+            const shuffledData = shuffleArray([...glossaryData]);
+            const questionData = shuffledData.slice(0, 4);
+            quizCorrectAnswer = questionData[0];
+            
+            quizDefinition.textContent = quizCorrectAnswer.definition;
+            
+            const options = shuffleArray(questionData);
+            
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'quiz-option p-4 bg-white border-2 border-gray-300 rounded-lg text-left hover:bg-gray-100 hover:border-blue-400 transition';
+                button.textContent = option.term;
+                button.dataset.term = option.term;
+                button.addEventListener('click', handleQuizAnswer);
+                quizOptionsContainer.appendChild(button);
+            });
+        }
+        
+        function handleQuizAnswer(e) {
+            const selectedButton = e.target;
+            const isCorrect = selectedButton.dataset.term === quizCorrectAnswer.term;
+            
+            if (isCorrect) {
+                quizScore++;
+                selectedButton.classList.add('correct');
+            } else {
+                selectedButton.classList.add('incorrect');
+                // Highlight the correct answer
+                quizOptionsContainer.querySelectorAll('.quiz-option').forEach(btn => {
+                   if(btn.dataset.term === quizCorrectAnswer.term) {
+                       btn.classList.add('correct');
+                   }
+                });
+            }
+            quizTotal++;
+            updateQuizScore();
+            
+            // Disable all buttons after an answer is chosen
+            quizOptionsContainer.querySelectorAll('.quiz-option').forEach(btn => {
+                btn.removeEventListener('click', handleQuizAnswer);
+                btn.classList.add('disabled');
+            });
+        }
+
+        function updateQuizScore() {
+            quizScoreEl.textContent = `Score: ${quizScore} / ${quizTotal}`;
+        }
+        
+        nextQuestionBtn.addEventListener('click', generateQuizQuestion);
+
+
+        // --- INITIALIZE APP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            switchGameMode('flashcards');
+        });
+    </script>
+
+</body>
+</html>
+
