@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMP Formula Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .formula-card {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .formula-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+        .formula-card.selected {
+            border: 2px solid #3b82f6;
+            background-color: #eff6ff;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            z-index: 1000;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .message-box.correct {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .message-box.incorrect {
+            background-color: #F44336;
+            color: white;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        /* Calculator Styles */
+        #calculator-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 300px;
+            background-color: #2d3748;
+            color: white;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 990;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -4px 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #calculator-container.open {
+            transform: translateX(0);
+        }
+        
+        #calculator-toggle-btn {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) translateX(-100%);
+            width: 48px;
+            height: 48px;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 8px 0 0 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 991;
+            transition: all 0.3s ease-in-out;
+        }
+        #calculator-toggle-btn.hidden {
+            transform: translateY(-50%) translateX(100%);
+        }
+
+        #calculator-display-container {
+            position: relative;
+            width: 100%;
+        }
+
+        #calculator-display {
+            background-color: #1a202c;
+            color: white;
+            width: 100%;
+            padding: 1rem;
+            font-size: 2rem;
+            text-align: right;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+
+        #calculator-close-btn {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 32px;
+            height: 32px;
+            background-color: #e53e3e;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .calc-btn {
+            background-color: #4a5568;
+            color: white;
+            font-size: 1.25rem;
+            padding: 1rem;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .calc-btn:hover {
+            background-color: #718096;
+        }
+        .calc-btn.operator {
+            background-color: #3b82f6;
+        }
+        .calc-btn.operator:hover {
+            background-color: #2563eb;
+        }
+        .calc-btn.clear {
+            background-color: #e53e3e;
+        }
+        .calc-btn.clear:hover {
+            background-color: #c53030;
+        }
+        .calc-btn.equals {
+            grid-column: span 2;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div id="message-box" class="message-box"></div>
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content card">
+            <h3 class="text-xl font-semibold mb-4" id="modal-message"></h3>
+            <div class="flex justify-center space-x-4">
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-6">
+        <div class="card p-8 text-center">
+            <h1 class="text-3xl font-bold mb-4">PMP Formula Practice</h1>
+            <p class="text-gray-600 mb-6">Select the formulas you want to practice. The app will generate problems for you to solve.</p>
+
+            <div id="formula-selection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <!-- Formula cards will be dynamically inserted here -->
+            </div>
+
+            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                <button id="select-all-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Select All</button>
+                <button id="start-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Start Practice</button>
+            </div>
+
+            <div id="problem-area" class="mt-8 hidden">
+                <div class="card p-6">
+                    <p id="problem-text" class="text-xl font-medium text-gray-800 mb-4"></p>
+                    <div class="relative mb-4">
+                        <span id="currency-symbol" class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
+                        <input type="number" id="answer-input" class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your Answer">
+                    </div>
+                    <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                        <button id="submit-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Submit Answer</button>
+                        <button id="next-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hidden">Next Problem</button>
+                    </div>
+                    <div id="feedback-area" class="mt-4 text-center text-lg font-semibold"></div>
+                </div>
+                <button id="back-to-menu-btn" class="mt-4 w-full btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculator Section -->
+    <button id="calculator-toggle-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+    </button>
+    <div id="calculator-container" class="card">
+        <div id="calculator-display-container">
+            <div id="calculator-display">0</div>
+            <button id="calculator-close-btn">-</button>
+        </div>
+        <div class="calculator-buttons">
+            <button class="calc-btn clear">C</button>
+            <button class="calc-btn operator">&larr;</button>
+            <button class="calc-btn operator">/</button>
+            <button class="calc-btn operator">*</button>
+            <button class="calc-btn">7</button>
+            <button class="calc-btn">8</button>
+            <button class="calc-btn">9</button>
+            <button class="calc-btn operator">-</button>
+            <button class="calc-btn">4</button>
+            <button class="calc-btn">5</button>
+            <button class="calc-btn">6</button>
+            <button class="calc-btn operator">+</button>
+            <button class="calc-btn">1</button>
+            <button class="calc-btn">2</button>
+            <button class="calc-btn">3</button>
+            <button class="calc-btn">0</button>
+            <button class="calc-btn">.</button>
+            <button class="calc-btn">+/-</button>
+            <button class="calc-btn equals operator">=</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const formulaSelectionDiv = document.getElementById('formula-selection');
+            const startBtn = document.getElementById('start-btn');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const problemArea = document.getElementById('problem-area');
+            const problemText = document.getElementById('problem-text');
+            const answerInput = document.getElementById('answer-input');
+            const currencySymbol = document.getElementById('currency-symbol');
+            const submitBtn = document.getElementById('submit-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const backToMenuBtn = document.getElementById('back-to-menu-btn');
+            const feedbackArea = document.getElementById('feedback-area');
+            const messageBox = document.getElementById('message-box');
+            const modal = document.getElementById('confirm-modal');
+            const modalMessage = document.getElementById('modal-message');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+            let selectedFormulas = [];
+            let allSelected = false;
+            let currentProblem = null;
+            let currentFormula = null;
+            let availableFormulas = [];
+
+            const pmpFormulas = [
+                { id: 'ev', name: 'Earned Value (EV)', formula: '$EV=$ %Complete*BAC', generate: generateEV, check: checkEV, unit: '$' },
+                { id: 'ac', name: 'Actual Cost (AC)', formula: '$AC=$ %Spent*BAC', generate: generateAC, check: checkAC, unit: '$' },
+                { id: 'cv', name: 'Cost Variance (CV)', formula: 'CV = EV-AC', generate: generateCV, check: checkCV, unit: '$' },
+                { id: 'sv', name: 'Schedule Variance (SV)', formula: '$SV=EV-PV$', generate: generateSV, check: checkSV, unit: '$' },
+                { id: 'cpi', name: 'Cost Performance Index (CPI)', formula: '$CPI=EV/AC$', generate: generateCPI, check: checkCPI, unit: 'none' },
+                { id: 'spi', name: 'Schedule Performance Index (SPI)', formula: '$SPI=EV/PV$', generate: generateSPI, check: checkSPI, unit: 'none' },
+                { id: 'eac1', name: 'Estimate at Completion (EAC) 1', formula: '$EAC = AC+ETC$', generate: generateEAC1, check: checkEAC1, unit: '$' },
+                { id: 'eac2', name: 'Estimate at Completion (EAC) 2', formula: '$EAC = AC+BAC-EV$', generate: generateEAC2, check: checkEAC2, unit: '$' },
+                { id: 'etc', name: 'Estimate to Complete (ETC)', formula: '$ETC=EAC-AC$', generate: generateETC, check: checkETC, unit: '$' },
+                { id: 'vac', name: 'Variance at Completion (VAC)', formula: '$VAC=BAC-EAC$', generate: generateVAC, check: checkVAC, unit: '$' },
+                { id: 'tcpi1', name: 'To Complete Performance Index (TCPI) 1', formula: '$TCPI=(BAC-EV)/(BAC-AC)$', generate: generateTCPI1, check: checkTCPI1, unit: 'none' },
+                { id: 'comm_channels', name: 'Communication Channels', formula: 'Comm Channels $=n(n-1)/2$', generate: generateComm, check: checkComm, unit: 'none' },
+                { id: 'emv', name: 'Expected Monetary Value (EMV)', formula: '$EMV=P*I$', generate: generateEMV, check: checkEMV, unit: '$' },
+                { id: 'pert_ead', name: 'PERT EAD', formula: '$PERT EAD = (O+4M+P)/6$', generate: generatePERT, check: checkPERT, unit: 'days' },
+                { id: 'sd', name: 'Standard Deviation (SD)', formula: '$SD=(P-O)/6$', generate: generateSD, check: checkSD, unit: 'days' },
+                { id: 'total_float', name: 'Total Float/Slack', formula: '$Total Float = LS-ES$ or $LF-EF$', generate: generateFloat, check: checkFloat, unit: 'days' },
+            ];
+
+            const showMessageBox = (message, type) => {
+                messageBox.textContent = message;
+                messageBox.className = `message-box show ${type}`;
+                setTimeout(() => {
+                    messageBox.className = messageBox.className.replace('show', '');
+                }, 3000);
+            };
+
+            const showModal = (message) => {
+                modalMessage.textContent = message;
+                modal.style.display = 'flex';
+            };
+
+            const hideModal = () => {
+                modal.style.display = 'none';
+            };
+
+            modalConfirmBtn.addEventListener('click', hideModal);
+
+            const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const roundTo = (num, places) => parseFloat(num.toFixed(places));
+
+            const formatValue = (value, unit) => {
+                if (unit === '$') {
+                    return `$${value}`;
+                }
+                return value;
+            };
+
+            // Formula specific logic
+            function generateEV() {
+                const bac = getRandomInt(100000, 500000);
+                const percentComplete = roundTo(getRandomInt(1, 99) / 100, 2);
+                const ev = roundTo(percentComplete * bac, 2);
+                return {
+                    question: `A project has a BAC of $${bac} and is ${percentComplete * 100}% complete. What is the Earned Value (EV)?`,
+                    answer: ev
+                };
+            }
+
+            function checkEV(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateAC() {
+                const bac = getRandomInt(100000, 500000);
+                const percentSpent = roundTo(getRandomInt(1, 99) / 100, 2);
+                const ac = roundTo(percentSpent * bac, 2);
+                return {
+                    question: `A project has a BAC of $${bac} and has spent ${percentSpent * 100}% of the budget. What is the Actual Cost (AC)?`,
+                    answer: ac
+                };
+            }
+
+            function checkAC(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateCV() {
+                const ev = getRandomInt(50000, 200000);
+                const ac = getRandomInt(50000, 200000);
+                const cv = roundTo(ev - ac, 2);
+                return {
+                    question: `The Earned Value (EV) is $${ev} and the Actual Cost (AC) is $${ac}. What is the Cost Variance (CV)?`,
+                    answer: cv
+                };
+            }
+
+            function checkCV(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateSV() {
+                const ev = getRandomInt(50000, 200000);
+                const pv = getRandomInt(50000, 200000);
+                const sv = roundTo(ev - pv, 2);
+                return {
+                    question: `The Earned Value (EV) is $${ev} and the Planned Value (PV) is $${pv}. What is the Schedule Variance (SV)?`,
+                    answer: sv
+                };
+            }
+
+            function checkSV(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateCPI() {
+                const ev = getRandomInt(50000, 200000);
+                const ac = getRandomInt(50000, 200000);
+                const cpi = roundTo(ev / ac, 2);
+                return {
+                    question: `A project has an EV of $${ev} and an AC of $${ac}. What is the Cost Performance Index (CPI)?`,
+                    answer: cpi
+                };
+            }
+
+            function checkCPI(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateSPI() {
+                const ev = getRandomInt(50000, 200000);
+                const pv = getRandomInt(50000, 200000);
+                const spi = roundTo(ev / pv, 2);
+                return {
+                    question: `A project has an EV of $${ev} and a PV of $${pv}. What is the Schedule Performance Index (SPI)?`,
+                    answer: spi
+                };
+            }
+
+            function checkSPI(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+            
+            function generateEAC1() {
+                const ac = getRandomInt(100000, 500000);
+                const etc = getRandomInt(50000, 200000);
+                const eac = roundTo(ac + etc, 2);
+                return {
+                    question: `The project has an Actual Cost (AC) of $${ac} and the Estimate to Complete (ETC) is $${etc}. What is the Estimate at Completion (EAC)?`,
+                    answer: eac
+                };
+            }
+
+            function checkEAC1(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateEAC2() {
+                const ac = getRandomInt(100000, 500000);
+                const bac = getRandomInt(500000, 1000000);
+                const ev = getRandomInt(100000, 500000);
+                const eac = roundTo(ac + (bac - ev), 2);
+                return {
+                    question: `A project has an AC of $${ac}, a BAC of $${bac}, and an EV of $${ev}. What is the Estimate at Completion (EAC)?`,
+                    answer: eac
+                };
+            }
+
+            function checkEAC2(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateETC() {
+                const eac = getRandomInt(500000, 1000000);
+                const ac = getRandomInt(100000, 500000);
+                const etc = roundTo(eac - ac, 2);
+                return {
+                    question: `The project has an Estimate at Completion (EAC) of $${eac} and the Actual Cost (AC) is $${ac}. What is the Estimate to Complete (ETC)?`,
+                    answer: etc
+                };
+            }
+
+            function checkETC(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+            
+            function generateVAC() {
+                const bac = getRandomInt(500000, 1000000);
+                const eac = getRandomInt(400000, 900000);
+                const vac = roundTo(bac - eac, 2);
+                return {
+                    question: `The project has a Budget at Completion (BAC) of $${bac} and the Estimate at Completion (EAC) is $${eac}. What is the Variance at Completion (VAC)?`,
+                    answer: vac
+                };
+            }
+
+            function checkVAC(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+            
+            function generateTCPI1() {
+                const bac = getRandomInt(500000, 1000000);
+                const ev = getRandomInt(100000, 500000);
+                const ac = getRandomInt(100000, 500000);
+                const tcpi = roundTo((bac - ev) / (bac - ac), 2);
+                return {
+                    question: `The project has a BAC of $${bac}, an EV of $${ev}, and an AC of $${ac}. What is the To Complete Performance Index (TCPI)?`,
+                    answer: tcpi
+                };
+            }
+
+            function checkTCPI1(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateComm() {
+                const n = getRandomInt(3, 15);
+                const channels = n * (n - 1) / 2;
+                return {
+                    question: `If there are ${n} stakeholders on a project, how many communication channels are there?`,
+                    answer: channels
+                };
+            }
+
+            function checkComm(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateEMV() {
+                const p = roundTo(Math.random(), 2);
+                const i = getRandomInt(1000, 10000);
+                const emv = roundTo(p * i, 2);
+                return {
+                    question: `A risk has a probability of ${p * 100}% and an impact of $${i}. What is the Expected Monetary Value (EMV)?`,
+                    answer: emv
+                };
+            }
+
+            function checkEMV(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+            
+            function generatePERT() {
+                const o = getRandomInt(1, 10);
+                const m = getRandomInt(o + 1, o + 10);
+                const p = getRandomInt(m + 1, m + 10);
+                const ead = roundTo((o + 4 * m + p) / 6, 2);
+                return {
+                    question: `An activity has an Optimistic (O) estimate of ${o} days, a Most Likely (M) estimate of ${m} days, and a Pessimistic (P) estimate of ${p} days. What is the PERT Expected Activity Duration (EAD)?`,
+                    answer: ead
+                };
+            }
+
+            function checkPERT(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateSD() {
+                const p = getRandomInt(10, 50);
+                const o = getRandomInt(1, 9);
+                const sd = roundTo((p - o) / 6, 2);
+                return {
+                    question: `An activity has a Pessimistic (P) estimate of ${p} days and an Optimistic (O) estimate of ${o} days. What is the Standard Deviation (SD)?`,
+                    answer: sd
+                };
+            }
+
+            function checkSD(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            function generateFloat() {
+                const es = getRandomInt(1, 20);
+                const ls = getRandomInt(es, es + 10);
+                const totalFloat = roundTo(ls - es, 2);
+                return {
+                    question: `An activity has an Early Start (ES) of ${es} days and a Late Start (LS) of ${ls} days. What is the Total Float/Slack?`,
+                    answer: totalFloat
+                };
+            }
+
+            function checkFloat(userAnswer) {
+                return userAnswer === currentProblem.answer;
+            }
+
+            const renderFormulaCards = () => {
+                formulaSelectionDiv.innerHTML = '';
+                pmpFormulas.forEach(formula => {
+                    const card = document.createElement('div');
+                    card.className = 'formula-card card p-4 flex flex-col justify-between items-center text-center';
+                    card.innerHTML = `
+                        <h2 class="font-bold text-lg text-gray-800">${formula.name}</h2>
+                        <p class="text-sm text-gray-500 mt-1">${formula.formula}</p>
+                    `;
+                    card.addEventListener('click', () => {
+                        card.classList.toggle('selected');
+                        if (card.classList.contains('selected')) {
+                            selectedFormulas.push(formula.id);
+                        } else {
+                            selectedFormulas = selectedFormulas.filter(id => id !== formula.id);
+                        }
+                    });
+                    formulaSelectionDiv.appendChild(card);
+                });
+                updateSelectAllButton();
+            };
+
+            const updateSelectAllButton = () => {
+                allSelected = selectedFormulas.length === pmpFormulas.length;
+                selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+            };
+
+            const toggleSelectAll = () => {
+                if (allSelected) {
+                    selectedFormulas = [];
+                    document.querySelectorAll('.formula-card.selected').forEach(card => card.classList.remove('selected'));
+                } else {
+                    selectedFormulas = pmpFormulas.map(f => f.id);
+                    document.querySelectorAll('.formula-card').forEach(card => card.classList.add('selected'));
+                }
+                updateSelectAllButton();
+            };
+
+            const startPractice = () => {
+                if (selectedFormulas.length === 0) {
+                    showModal('Please select at least one formula to practice.');
+                    return;
+                }
+                availableFormulas = selectedFormulas.map(id => pmpFormulas.find(f => f.id === id));
+                startBtn.parentNode.classList.add('hidden');
+                formulaSelectionDiv.classList.add('hidden');
+                problemArea.classList.remove('hidden');
+                answerInput.focus();
+                generateNewProblem();
+            };
+
+            const generateNewProblem = () => {
+                feedbackArea.textContent = '';
+                answerInput.value = '';
+                submitBtn.classList.remove('hidden');
+                nextBtn.classList.add('hidden');
+                const randomIndex = getRandomInt(0, availableFormulas.length - 1);
+                currentFormula = availableFormulas[randomIndex];
+                currentProblem = currentFormula.generate();
+                problemText.textContent = currentProblem.question;
+                // Set currency symbol based on the formula
+                if (currentFormula.unit === '$') {
+                    currencySymbol.classList.remove('hidden');
+                    answerInput.style.paddingLeft = '2rem';
+                } else {
+                    currencySymbol.classList.add('hidden');
+                    answerInput.style.paddingLeft = '1rem';
+                }
+            };
+
+            const handleSubmit = () => {
+                const userAnswer = parseFloat(answerInput.value);
+                if (isNaN(userAnswer)) {
+                    showModal('Please enter a valid number.');
+                    return;
+                }
+                const isCorrect = currentFormula.check(userAnswer);
+                if (isCorrect) {
+                    feedbackArea.textContent = 'Correct!';
+                    feedbackArea.classList.remove('text-red-500');
+                    feedbackArea.classList.add('text-green-600');
+                    showMessageBox('Correct!', 'correct');
+                } else {
+                    let feedbackText = `Incorrect. The correct answer is `;
+                    if (currentFormula.unit === '$') {
+                        feedbackText += `$${currentProblem.answer}`;
+                    } else if (currentFormula.unit === 'days') {
+                        feedbackText += `${currentProblem.answer} days`;
+                    } else {
+                        feedbackText += `${currentProblem.answer}`;
+                    }
+                    feedbackArea.textContent = feedbackText;
+                    feedbackArea.classList.remove('text-green-600');
+                    feedbackArea.classList.add('text-red-500');
+                    showMessageBox('Incorrect', 'incorrect');
+                }
+                submitBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+            };
+
+            const handleNext = () => {
+                generateNewProblem();
+            };
+
+            const handleBackToMenu = () => {
+                selectedFormulas = [];
+                renderFormulaCards(); // Re-render to clear selections and reset select all button
+                startBtn.parentNode.classList.remove('hidden');
+                formulaSelectionDiv.classList.remove('hidden');
+                problemArea.classList.add('hidden');
+                feedbackArea.textContent = '';
+            };
+
+            startBtn.addEventListener('click', startPractice);
+            selectAllBtn.addEventListener('click', toggleSelectAll);
+            submitBtn.addEventListener('click', handleSubmit);
+            nextBtn.addEventListener('click', handleNext);
+            backToMenuBtn.addEventListener('click', handleBackToMenu);
+            answerInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (submitBtn.classList.contains('hidden')) {
+                        handleNext();
+                    } else {
+                        handleSubmit();
+                    }
+                }
+            });
+
+            // Initial render of formula cards
+            renderFormulaCards();
+
+            /* --- Calculator Logic --- */
+            const calculatorToggleBtn = document.getElementById('calculator-toggle-btn');
+            const calculatorContainer = document.getElementById('calculator-container');
+            const calculatorDisplay = document.getElementById('calculator-display');
+            const calculatorButtons = document.querySelectorAll('.calculator-buttons .calc-btn');
+            const calculatorCloseBtn = document.getElementById('calculator-close-btn');
+
+            let currentInput = '';
+            let firstOperand = null;
+            let operator = null;
+            let waitingForSecondOperand = false;
+            const decimalPlaces = 2; // Fixed decimal places for rounding
+
+            const updateDisplay = () => {
+                calculatorDisplay.textContent = currentInput || '0';
+            };
+
+            const resetCalculator = () => {
+                currentInput = '';
+                firstOperand = null;
+                operator = null;
+                waitingForSecondOperand = false;
+                updateDisplay();
+            };
+
+            const handleNumberInput = (num) => {
+                if (waitingForSecondOperand) {
+                    currentInput = num;
+                    waitingForSecondOperand = false;
+                } else {
+                    currentInput = currentInput === '0' ? num : currentInput + num;
+                }
+                updateDisplay();
+            };
+
+            const handleOperator = (nextOperator) => {
+                const inputValue = parseFloat(currentInput);
+
+                if (operator && waitingForSecondOperand) {
+                    operator = nextOperator;
+                    return;
+                }
+
+                if (firstOperand === null) {
+                    firstOperand = inputValue;
+                } else if (operator) {
+                    const result = performCalculation();
+                    currentInput = roundTo(result, decimalPlaces).toString();
+                    firstOperand = parseFloat(currentInput);
+                }
+
+                waitingForSecondOperand = true;
+                operator = nextOperator;
+                updateDisplay();
+            };
+
+            const performCalculation = () => {
+                const secondOperand = parseFloat(currentInput);
+                if (operator === '+') return firstOperand + secondOperand;
+                if (operator === '-') return firstOperand - secondOperand;
+                if (operator === '*') return firstOperand * secondOperand;
+                if (operator === '/') {
+                    if (secondOperand === 0) {
+                        return "Error"; // Handle division by zero
+                    }
+                    return firstOperand / secondOperand;
+                }
+                return secondOperand;
+            };
+
+            calculatorButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.textContent;
+                    
+                    if (button.classList.contains('clear')) {
+                        resetCalculator();
+                    } else if (button.classList.contains('operator')) {
+                        if (value === '=') {
+                            if (firstOperand !== null && operator) {
+                                const result = performCalculation();
+                                if (result === "Error") {
+                                    currentInput = "Error";
+                                } else {
+                                    currentInput = roundTo(result, decimalPlaces).toString();
+                                }
+                                firstOperand = null;
+                                operator = null;
+                                waitingForSecondOperand = false;
+                                updateDisplay();
+                            }
+                        } else if (value === '←') {
+                            currentInput = currentInput.slice(0, -1);
+                            if (currentInput === '') {
+                                currentInput = '0';
+                            }
+                            updateDisplay();
+                        } else if (value === '+/-') {
+                            currentInput = String(parseFloat(currentInput) * -1);
+                            updateDisplay();
+                        } else {
+                             handleOperator(value);
+                        }
+                    } else if (value === '.') {
+                        if (!currentInput.includes('.')) {
+                            currentInput += '.';
+                            updateDisplay();
+                        }
+                    } else {
+                        handleNumberInput(value);
+                    }
+                });
+            });
+
+            const openCalculator = () => {
+                calculatorContainer.classList.add('open');
+                calculatorToggleBtn.classList.add('hidden');
+            };
+
+            const closeCalculator = () => {
+                calculatorContainer.classList.remove('open');
+                calculatorToggleBtn.classList.remove('hidden');
+            };
+
+            calculatorToggleBtn.addEventListener('click', openCalculator);
+            calculatorCloseBtn.addEventListener('click', closeCalculator);
+
+            // Initial display for calculator
+            updateDisplay();
+
+        });
+    </script>
+</body>
+</html>
