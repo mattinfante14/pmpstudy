@@ -82,6 +82,29 @@
             text-align: center;
         }
 
+        .option-button {
+            width: 100%;
+            background-color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: left;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .option-button:hover:not(.correct):not(.incorrect) {
+            background-color: #cbd5e1;
+        }
+        .option-button.correct {
+            background-color: #4CAF50;
+            color: white;
+            pointer-events: none;
+        }
+        .option-button.incorrect {
+            background-color: #F44336;
+            color: white;
+            pointer-events: none;
+        }
+
         /* Calculator Styles */
         #calculator-container {
             position: fixed;
@@ -228,15 +251,12 @@
             <div id="problem-area" class="mt-8 hidden">
                 <div class="card p-6">
                     <p id="problem-text" class="text-xl font-medium text-gray-800 mb-4"></p>
-                    <div class="relative mb-4">
-                        <span id="currency-symbol" class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
-                        <input type="number" id="answer-input" class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your Answer">
+                    <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <!-- Multiple choice options will be inserted here -->
                     </div>
-                    <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                        <button id="submit-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Submit Answer</button>
+                    <div class="flex justify-center mt-6">
                         <button id="next-btn" class="w-full md:w-1/2 btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 hidden">Next Problem</button>
                     </div>
-                    <div id="feedback-area" class="mt-4 text-center text-lg font-semibold"></div>
                 </div>
                 <button id="back-to-menu-btn" class="mt-4 w-full btn-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Back to Menu</button>
             </div>
@@ -282,12 +302,9 @@
             const selectAllBtn = document.getElementById('select-all-btn');
             const problemArea = document.getElementById('problem-area');
             const problemText = document.getElementById('problem-text');
-            const answerInput = document.getElementById('answer-input');
-            const currencySymbol = document.getElementById('currency-symbol');
-            const submitBtn = document.getElementById('submit-btn');
+            const optionsContainer = document.getElementById('options-container');
             const nextBtn = document.getElementById('next-btn');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
-            const feedbackArea = document.getElementById('feedback-area');
             const messageBox = document.getElementById('message-box');
             const modal = document.getElementById('confirm-modal');
             const modalMessage = document.getElementById('modal-message');
@@ -346,15 +363,30 @@
                 }
                 return value;
             };
+            
+            // Utility function to shuffle an array
+            const shuffleArray = (array) => {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            };
 
-            // Formula specific logic
+            // Formula specific logic for problem generation
             function generateEV() {
                 const bac = getRandomInt(100000, 500000);
                 const percentComplete = roundTo(getRandomInt(1, 99) / 100, 2);
                 const ev = roundTo(percentComplete * bac, 2);
+                const distractors = [
+                    roundTo(percentComplete * bac + getRandomInt(500, 5000), 2),
+                    roundTo(bac, 2),
+                    roundTo(percentComplete + bac, 2)
+                ];
                 return {
                     question: `A project has a BAC of $${bac} and is ${percentComplete * 100}% complete. What is the Earned Value (EV)?`,
-                    answer: ev
+                    answer: ev,
+                    options: shuffleArray([ev, ...distractors])
                 };
             }
 
@@ -366,9 +398,15 @@
                 const bac = getRandomInt(100000, 500000);
                 const percentSpent = roundTo(getRandomInt(1, 99) / 100, 2);
                 const ac = roundTo(percentSpent * bac, 2);
+                const distractors = [
+                    roundTo(percentSpent * bac + getRandomInt(500, 5000), 2),
+                    roundTo(bac, 2),
+                    roundTo(percentSpent, 2)
+                ];
                 return {
                     question: `A project has a BAC of $${bac} and has spent ${percentSpent * 100}% of the budget. What is the Actual Cost (AC)?`,
-                    answer: ac
+                    answer: ac,
+                    options: shuffleArray([ac, ...distractors])
                 };
             }
 
@@ -380,9 +418,15 @@
                 const ev = getRandomInt(50000, 200000);
                 const ac = getRandomInt(50000, 200000);
                 const cv = roundTo(ev - ac, 2);
+                const distractors = [
+                    roundTo(ac - ev, 2),
+                    roundTo(ev + ac, 2),
+                    roundTo(ev, 2)
+                ];
                 return {
                     question: `The Earned Value (EV) is $${ev} and the Actual Cost (AC) is $${ac}. What is the Cost Variance (CV)?`,
-                    answer: cv
+                    answer: cv,
+                    options: shuffleArray([cv, ...distractors])
                 };
             }
 
@@ -394,9 +438,15 @@
                 const ev = getRandomInt(50000, 200000);
                 const pv = getRandomInt(50000, 200000);
                 const sv = roundTo(ev - pv, 2);
+                const distractors = [
+                    roundTo(pv - ev, 2),
+                    roundTo(ev + pv, 2),
+                    roundTo(pv, 2)
+                ];
                 return {
                     question: `The Earned Value (EV) is $${ev} and the Planned Value (PV) is $${pv}. What is the Schedule Variance (SV)?`,
-                    answer: sv
+                    answer: sv,
+                    options: shuffleArray([sv, ...distractors])
                 };
             }
 
@@ -408,9 +458,15 @@
                 const ev = getRandomInt(50000, 200000);
                 const ac = getRandomInt(50000, 200000);
                 const cpi = roundTo(ev / ac, 2);
+                const distractors = [
+                    roundTo(ac / ev, 2),
+                    roundTo(ev - ac, 2),
+                    roundTo(ac, 2)
+                ];
                 return {
                     question: `A project has an EV of $${ev} and an AC of $${ac}. What is the Cost Performance Index (CPI)?`,
-                    answer: cpi
+                    answer: cpi,
+                    options: shuffleArray([cpi, ...distractors])
                 };
             }
 
@@ -422,9 +478,15 @@
                 const ev = getRandomInt(50000, 200000);
                 const pv = getRandomInt(50000, 200000);
                 const spi = roundTo(ev / pv, 2);
+                const distractors = [
+                    roundTo(pv / ev, 2),
+                    roundTo(ev - pv, 2),
+                    roundTo(pv, 2)
+                ];
                 return {
                     question: `A project has an EV of $${ev} and a PV of $${pv}. What is the Schedule Performance Index (SPI)?`,
-                    answer: spi
+                    answer: spi,
+                    options: shuffleArray([spi, ...distractors])
                 };
             }
 
@@ -436,9 +498,15 @@
                 const ac = getRandomInt(100000, 500000);
                 const etc = getRandomInt(50000, 200000);
                 const eac = roundTo(ac + etc, 2);
+                const distractors = [
+                    roundTo(ac + etc + getRandomInt(500, 5000), 2),
+                    roundTo(ac - etc, 2),
+                    roundTo(ac, 2)
+                ];
                 return {
                     question: `The project has an Actual Cost (AC) of $${ac} and the Estimate to Complete (ETC) is $${etc}. What is the Estimate at Completion (EAC)?`,
-                    answer: eac
+                    answer: eac,
+                    options: shuffleArray([eac, ...distractors])
                 };
             }
 
@@ -451,9 +519,15 @@
                 const bac = getRandomInt(500000, 1000000);
                 const ev = getRandomInt(100000, 500000);
                 const eac = roundTo(ac + (bac - ev), 2);
+                const distractors = [
+                    roundTo(ac + bac + ev, 2),
+                    roundTo(ac + ev - bac, 2),
+                    roundTo(bac, 2)
+                ];
                 return {
                     question: `A project has an AC of $${ac}, a BAC of $${bac}, and an EV of $${ev}. What is the Estimate at Completion (EAC)?`,
-                    answer: eac
+                    answer: eac,
+                    options: shuffleArray([eac, ...distractors])
                 };
             }
 
@@ -465,9 +539,15 @@
                 const eac = getRandomInt(500000, 1000000);
                 const ac = getRandomInt(100000, 500000);
                 const etc = roundTo(eac - ac, 2);
+                const distractors = [
+                    roundTo(eac + ac, 2),
+                    roundTo(ac, 2),
+                    roundTo(eac, 2)
+                ];
                 return {
                     question: `The project has an Estimate at Completion (EAC) of $${eac} and the Actual Cost (AC) is $${ac}. What is the Estimate to Complete (ETC)?`,
-                    answer: etc
+                    answer: etc,
+                    options: shuffleArray([etc, ...distractors])
                 };
             }
 
@@ -479,9 +559,15 @@
                 const bac = getRandomInt(500000, 1000000);
                 const eac = getRandomInt(400000, 900000);
                 const vac = roundTo(bac - eac, 2);
+                const distractors = [
+                    roundTo(eac - bac, 2),
+                    roundTo(bac + eac, 2),
+                    roundTo(bac, 2)
+                ];
                 return {
                     question: `The project has a Budget at Completion (BAC) of $${bac} and the Estimate at Completion (EAC) is $${eac}. What is the Variance at Completion (VAC)?`,
-                    answer: vac
+                    answer: vac,
+                    options: shuffleArray([vac, ...distractors])
                 };
             }
 
@@ -494,9 +580,15 @@
                 const ev = getRandomInt(100000, 500000);
                 const ac = getRandomInt(100000, 500000);
                 const tcpi = roundTo((bac - ev) / (bac - ac), 2);
+                const distractors = [
+                    roundTo((bac + ev) / (bac - ac), 2),
+                    roundTo((bac - ev) / (ac - bac), 2),
+                    roundTo(ev / ac, 2)
+                ];
                 return {
                     question: `The project has a BAC of $${bac}, an EV of $${ev}, and an AC of $${ac}. What is the To Complete Performance Index (TCPI)?`,
-                    answer: tcpi
+                    answer: tcpi,
+                    options: shuffleArray([tcpi, ...distractors])
                 };
             }
 
@@ -507,9 +599,15 @@
             function generateComm() {
                 const n = getRandomInt(3, 15);
                 const channels = n * (n - 1) / 2;
+                const distractors = [
+                    roundTo(n * (n - 1) / 3, 2),
+                    roundTo(n * (n + 1) / 2, 2),
+                    roundTo(n - 1, 2)
+                ];
                 return {
                     question: `If there are ${n} stakeholders on a project, how many communication channels are there?`,
-                    answer: channels
+                    answer: channels,
+                    options: shuffleArray([channels, ...distractors])
                 };
             }
 
@@ -521,9 +619,15 @@
                 const p = roundTo(Math.random(), 2);
                 const i = getRandomInt(1000, 10000);
                 const emv = roundTo(p * i, 2);
+                const distractors = [
+                    roundTo(p + i, 2),
+                    roundTo(p * i + getRandomInt(100, 500), 2),
+                    roundTo(p, 2)
+                ];
                 return {
                     question: `A risk has a probability of ${p * 100}% and an impact of $${i}. What is the Expected Monetary Value (EMV)?`,
-                    answer: emv
+                    answer: emv,
+                    options: shuffleArray([emv, ...distractors])
                 };
             }
 
@@ -536,9 +640,15 @@
                 const m = getRandomInt(o + 1, o + 10);
                 const p = getRandomInt(m + 1, m + 10);
                 const ead = roundTo((o + 4 * m + p) / 6, 2);
+                const distractors = [
+                    roundTo(o + 4 * m + p, 2),
+                    roundTo((o + m + p) / 3, 2),
+                    roundTo(m, 2)
+                ];
                 return {
                     question: `An activity has an Optimistic (O) estimate of ${o} days, a Most Likely (M) estimate of ${m} days, and a Pessimistic (P) estimate of ${p} days. What is the PERT Expected Activity Duration (EAD)?`,
-                    answer: ead
+                    answer: ead,
+                    options: shuffleArray([ead, ...distractors])
                 };
             }
 
@@ -550,9 +660,15 @@
                 const p = getRandomInt(10, 50);
                 const o = getRandomInt(1, 9);
                 const sd = roundTo((p - o) / 6, 2);
+                const distractors = [
+                    roundTo(p + o, 2),
+                    roundTo((p - o) / 3, 2),
+                    roundTo(p - o, 2)
+                ];
                 return {
                     question: `An activity has a Pessimistic (P) estimate of ${p} days and an Optimistic (O) estimate of ${o} days. What is the Standard Deviation (SD)?`,
-                    answer: sd
+                    answer: sd,
+                    options: shuffleArray([sd, ...distractors])
                 };
             }
 
@@ -564,9 +680,15 @@
                 const es = getRandomInt(1, 20);
                 const ls = getRandomInt(es, es + 10);
                 const totalFloat = roundTo(ls - es, 2);
+                const distractors = [
+                    roundTo(es, 2),
+                    roundTo(ls, 2),
+                    roundTo(ls + es, 2)
+                ];
                 return {
                     question: `An activity has an Early Start (ES) of ${es} days and a Late Start (LS) of ${ls} days. What is the Total Float/Slack?`,
-                    answer: totalFloat
+                    answer: totalFloat,
+                    options: shuffleArray([totalFloat, ...distractors])
                 };
             }
 
@@ -621,58 +743,52 @@
                 startBtn.parentNode.classList.add('hidden');
                 formulaSelectionDiv.classList.add('hidden');
                 problemArea.classList.remove('hidden');
-                answerInput.focus();
                 generateNewProblem();
             };
 
             const generateNewProblem = () => {
-                feedbackArea.textContent = '';
-                answerInput.value = '';
-                submitBtn.classList.remove('hidden');
+                optionsContainer.innerHTML = '';
                 nextBtn.classList.add('hidden');
+                
                 const randomIndex = getRandomInt(0, availableFormulas.length - 1);
                 currentFormula = availableFormulas[randomIndex];
                 currentProblem = currentFormula.generate();
                 problemText.textContent = currentProblem.question;
-                // Set currency symbol based on the formula
-                if (currentFormula.unit === '$') {
-                    currencySymbol.classList.remove('hidden');
-                    answerInput.style.paddingLeft = '2rem';
-                } else {
-                    currencySymbol.classList.add('hidden');
-                    answerInput.style.paddingLeft = '1rem';
-                }
+                
+                currentProblem.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = formatValue(option, currentFormula.unit);
+                    button.className = 'option-button';
+                    button.addEventListener('click', () => handleAnswer(option));
+                    optionsContainer.appendChild(button);
+                });
             };
 
-            const handleSubmit = () => {
-                const userAnswer = parseFloat(answerInput.value);
-                if (isNaN(userAnswer)) {
-                    showModal('Please enter a valid number.');
-                    return;
-                }
+            const handleAnswer = (userAnswer) => {
                 const isCorrect = currentFormula.check(userAnswer);
+                const optionButtons = document.querySelectorAll('.option-button');
+                
+                optionButtons.forEach(button => {
+                    const optionValue = parseFloat(button.textContent.replace('$', ''));
+                    if (optionValue === currentProblem.answer) {
+                        button.classList.add('correct');
+                    } else if (optionValue === userAnswer && !isCorrect) {
+                        button.classList.add('incorrect');
+                    } else {
+                        button.style.opacity = '0.5';
+                    }
+                    button.style.pointerEvents = 'none'; // Disable all buttons
+                });
+                
                 if (isCorrect) {
-                    feedbackArea.textContent = 'Correct!';
-                    feedbackArea.classList.remove('text-red-500');
-                    feedbackArea.classList.add('text-green-600');
                     showMessageBox('Correct!', 'correct');
                 } else {
-                    let feedbackText = `Incorrect. The correct answer is `;
-                    if (currentFormula.unit === '$') {
-                        feedbackText += `$${currentProblem.answer}`;
-                    } else if (currentFormula.unit === 'days') {
-                        feedbackText += `${currentProblem.answer} days`;
-                    } else {
-                        feedbackText += `${currentProblem.answer}`;
-                    }
-                    feedbackArea.textContent = feedbackText;
-                    feedbackArea.classList.remove('text-green-600');
-                    feedbackArea.classList.add('text-red-500');
                     showMessageBox('Incorrect', 'incorrect');
                 }
-                submitBtn.classList.add('hidden');
+
                 nextBtn.classList.remove('hidden');
             };
+
 
             const handleNext = () => {
                 generateNewProblem();
@@ -684,23 +800,12 @@
                 startBtn.parentNode.classList.remove('hidden');
                 formulaSelectionDiv.classList.remove('hidden');
                 problemArea.classList.add('hidden');
-                feedbackArea.textContent = '';
             };
 
             startBtn.addEventListener('click', startPractice);
             selectAllBtn.addEventListener('click', toggleSelectAll);
-            submitBtn.addEventListener('click', handleSubmit);
             nextBtn.addEventListener('click', handleNext);
             backToMenuBtn.addEventListener('click', handleBackToMenu);
-            answerInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    if (submitBtn.classList.contains('hidden')) {
-                        handleNext();
-                    } else {
-                        handleSubmit();
-                    }
-                }
-            });
 
             // Initial render of formula cards
             renderFormulaCards();
